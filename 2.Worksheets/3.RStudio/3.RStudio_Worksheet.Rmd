@@ -165,7 +165,7 @@ n
 
 ***Question 2***: What are the dimensions of the matrix you just transposed?
 
-> Answer 2: The dimension of the matrix are 10 x 5.
+> Answer 2: The dimension of the matrix are 5x10.
 
 
 ###Indexing a Matrix
@@ -175,7 +175,8 @@ In the R code chunk below, do the following:
 2) Remove the last row of matrix `m`.
 
 ```{r}
-
+m[,c(1:2,4:5)]
+m[c(1:9),]
 
 ```
 
@@ -200,14 +201,16 @@ In the R-code chunk below, do the following:
 3) Conduct a simple **Pearson's correlation** analysis.
 
 ```{r}
-
+meso.num <- meso[,3:8]
+pairs(meso.num)
+cor1 <- cor(meso.num)
 
 ```
 
 
 ***Question 3***: Describe some of the general features based on the visualization and correlation analysis above?
 
-> Answer 3:
+> Answer 3:The strongest positive correlation is between TIN and TN. Most other pairs also have positive correlations. CHLA does not seem to be correlated with any of the other variables.
 
 
 In the R code chunk below, do the following:
@@ -216,8 +219,15 @@ In the R code chunk below, do the following:
 3) Use the print command from the handout to see the results of each correlation analysis.
 
 ```{r}
+require("psych")
+cor2 <- corr.test(meso.num, method = "pearson", adjust = "BH")
+print(cor2, digits = 3)
+cor3 <- corr.test(meso.num, method = "kendall", adjust = "BH")
+print(cor3, digits = 3)
 
-
+require("corrplot")
+corrplot(cor1, method = "ellipse")
+dev.off()
 
 ```
 
@@ -228,7 +238,7 @@ When should one use non-parametric methods instead of parametric methods?
 With the Pearson's method, is there evidence for false discovery rate due to multiple comparisons? 
 Why is false discovery rate important?
 
-> Answer 4: 
+> Answer 4: Non-parametric tests should be used when the data is not normally distributed. The results of the correlation test are sensitive to whether you use parametric or non-parametric methods. For Pearson's method, the probability values corrected for multiple comparisons are slightly different than the uncorrected values which is important because as you do more comparison, the more likely errors are to occur.
 
 ### Linear Regression
 
@@ -239,20 +249,25 @@ In the R code chunk below, do the following:
 
 ```{r}
 
-
-
-
-
-
-
+fitreg <-lm(ZP~TN, data = meso)
+summary(fitreg)
+plot(meso$TN, meso$ZP, ylim=c(0,10), xlim=c(500,5000), xlab = expression(paste("Total Nitrogen (", mu, "g/L)")), ylab = "Zooplankton Biomass (mg/L)", las = 1)
+text(meso$TN, meso$ZP, meso$NUTS, pos=3, cex = 0.8)
+newTN <- seq(min(meso$TN), max(meso$TN), 10)
+regline <- predict(fitreg, newdata = data.frame(TN = newTN))
+lines(newTN, regline)
+conf95 <- predict(fitreg, newdata=data.frame(TN = newTN), interval = c("confidence"), level = 0.95, type = "response")
+matlines(newTN, conf95[,c("lwr","upr")], type ="l", lty = 2, lwd = 1, col = "black")
 ```
 
 ***Question 5***: Interpret the results from the regression model
 
-> Answer 5:
+> Answer 5: Total Nitrogen is a significant predictor of Zooplankton Biomass as shown by the low p-value. Thre residuals appear to be randomly distributed around zero. The Q-Q plot shows a reasonably linear relationship. The square root of the standardized residuals is mostly random and there do not appear to be many stand out cases in the residuals vs. legerage plot.
 
 
 ```{r}
+par(mfrow = c(2,2), mar = c(5.1,4.1,4.1,2.1))
+plot(fitreg)
 
 ```
 
@@ -266,12 +281,22 @@ Using the R code chunk below, do the following:
 
 
 ```{r}
+NUTS <- factor(meso$NUTS, levels = c('L','M','H'))
+zp.means <- tapply(meso$ZP, NUTS, mean)
+sem <-function(x){
+  sd(na.omit(x))/sqrt(length(na.omit(x)))
+}
+zp.sem <- tapply(meso$ZP, NUTS, sem)
 
+bp <- barplot(zp.means, ylim = c(0, round(max(meso$ZP), digits = 0)), pch = 15, cex = 1.25, las = 1, cex.lab = 1.4, cex.axis = 1.25, xlab = "nutrient supply", ylab = "zooplankton biomass (mg/L)", names.arg = c("low", "medium", "high"))
+arrows(x0 = bp, y0 = zp.means, y1 = zp.means - zp.sem, angle = 90, length = 0.1, lwd = 1)
+arrows(x0= bp, y0= zp.means, y1 = zp.means + zp.sem, angle = 90, length = 0.1, lwd = 1)
 
-
-
-
-
+fitanova <- aov(ZP ~NUTS, data = meso)
+summary(fitanova)
+TukeyHSD(fitanova)
+par(mfrow = c(2,2), mar = c(5.1,4.1,4.1,2.1))
+plot(fitanova)
 
 ```
 
@@ -302,12 +327,39 @@ The remaining columns of data refer to the biomass (µg/L) of different zooplank
 ***Question 6***: With the visualization and statistical tools that we learned about in the **3. RStudio** handout, use the site-by-species matrix to assess whether and how different zooplankton taxa were responsible for the total biomass (ZP) response to nutrient enrichment. 
 Describe what you learned below in the "Answer" section and include appropriate code in the R chunk.
 
+> Answer 6: Both Chydorus and Simocephallus were significant predictors of Zooplankton Biomass. Based on pairs correlations I was able to see that both Chydorus and Simocephallus were the species that were correlated with ZP. From there I ran linear regressions for each species to see that both are significant predictors of ZP. I then plotted the linear regression and relationship and generated confidence intervals for the relationships.
+
+
 ```{r}
+zoopsbys <- read.table("data/zoops.txt", sep = "\t", header = TRUE)
+zoopsbys <- zoopsbys[, c(3:11)]
+ZP <- meso.num[,6]
+zoops <- cbind(ZP, zoopsbys)
+pairs(zoops)
 
+corzoo <- cor(zoops)
+print(corzoo)
 
+fitregsimo <-lm(ZP~SIMO, data = zoops)
+summary(fitregsimo)
+plot(zoops$SIMO, zoops$ZP, ylim=c(0,10), xlim=c(0,3000), xlab = expression(paste("Simocephallus (", mu, "g/L)")), ylab = "Zooplankton Biomass (mg/L)", las = 1)
+newSIMO <- seq(min(zoops$SIMO), max(zoops$SIMO), 10)
+reglineSIMO <- predict(fitregsimo, newdata = data.frame(SIMO = newSIMO))
+lines(newSIMO, reglineSIMO)
+conf95SIMO <- predict(fitregsimo, newdata=data.frame(SIMO = newSIMO), interval = c("confidence"), level = 0.95, type = "response")
+matlines(newSIMO, conf95SIMO[,c("lwr","upr")], type ="l", lty = 2, lwd = 1, col = "black")
 
+fitregchyd <-lm(ZP~CHYD, data = zoops)
+summary(fitregchyd)
+plot(zoops$CHYD, zoops$ZP, ylim=c(0,10), xlim=c(0,9000), xlab = expression(paste("Chydorus (", mu, "g/L)")), ylab = "Zooplankton Biomass (mg/L)", las = 1)
+newCHYD <- seq(min(zoops$CHYD), max(zoops$CHYD), 10)
+reglineCHYD <- predict(fitregchyd, newdata = data.frame(CHYD = newCHYD))
+lines(newCHYD, reglineCHYD)
+conf95CHYD <- predict(fitregchyd, newdata=data.frame(CHYD = newCHYD), interval = c("confidence"), level = 0.95, type = "response")
+matlines(newCHYD, conf95CHYD[,c("lwr","upr")], type ="l", lty = 2, lwd = 1, col = "black")
 
 ```
+
 
 ## SUBMITTING YOUR WORKSHEET
 Use Knitr to create a PDF of your completed **3.RStudio_Worksheet.Rmd** document, push the repo to GitHub, and create a pull request.
