@@ -1,8 +1,12 @@
 ---
 title: '4\. Worksheet: Software Installation'
-author: "Student Name"
+author: "Emmi Mueller"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-output: pdf_document
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
 ---
 
 ## Directions:
@@ -24,7 +28,7 @@ It is due on **January 16^th^, 2019 at 12:00 (noon)**.
 
     E.g., Print "*Hello, World!*"
 ```{r}
-
+print ("Hello, World!")
 
 ```
 
