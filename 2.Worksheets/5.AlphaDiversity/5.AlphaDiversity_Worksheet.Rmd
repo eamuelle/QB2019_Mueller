@@ -71,13 +71,14 @@ In the R code chunk below, do the following:
 3. Compare the output of your function to the output of the `specnumber()` function in `vegan`.
 
 ```{r}
+site1 <- BCI[1,]
 
 S.obs <- function(x = ""){
    rowSums(x > 0) * 1
    }
 
-S.obs(BCI)
-specnumber(BCI)
+S.obs(site1)
+specnumber(site1)
 
 ```
 
@@ -170,19 +171,52 @@ In the R code chunk below, do the following:
 4. Use these functions to estimate richness at `site1` and `soilbac1`. 
 
 ```{r}
+S.chao1 <-  function(x =""){
+  S.obs(x) + (sum(x ==1)^2) / (2 * sum(x ==2))
+}
+
+S.chao2 <- function(site ="", SbyS = ""){
+  SbyS = as.data.frame(SbyS)
+  x = SbyS[site, ]
+  SbyS.pa <- (SbyS > 0) * 1
+  Q1 = sum(colSums(SbyS.pa) ==1)
+  Q2 = sum(colSums(SbyS.pa) ==2)
+  S.chao2 = S.obs(x) + (Q1^2)/(2*Q2)
+  return(S.chao2)
+}
 
 
+S.ace <- function(x = "", thresh = 10){
+  x <- x[x>0]
+  S.abund <- length(which(x > thresh))
+  S.rare <- length(which(x <= thresh))
+  singlt <- length(which(x ==1))
+  N.rare <- sum(x[which(x <= thresh)])
+  C.ace <- 1 - (singlt /N.rare)
+  i <- c(1:thresh)
+  count <- function(i,y){
+    length(y[y==i])
+  }
+  a.1 <- sapply(i,count,x)
+  f.1 <-(i*(i-1))*a.1
+  G.ace <-(S.rare/C.ace)*(sum(f.1)/(N.rare*(N.rare-1)))
+  S.ace <- S.abund + (S.rare/C.ace) + (singlt/C.ace) * max(G.ace,0)
+  return(S.ace)
+}
 
+S.chao1(site1)
+S.chao2(1, BCI)
+S.ace(site1)
 
-
-
-
-
+S.chao1(soilbac1)
+S.chao2(1, soilbac.t)
+S.ace(soilbac1)
 ```
 
 ***Question 4***: What is the difference between ACE and the Chao estimators? Do the estimators give consistent results? Which one would you choose to use and why?
 
-> ***Answer 4***:
+> ***Answer 4***: ACE is an abundance-based coverage estimator based on a cutoff of rare taxa (<10 individuals at a site) whereas Chao estimates are abundance-based and incidence-based estimators based on singletons and doubletons. The estimators do not give consistent results as Chao1 is based on the abundance of species and singletons and doubletons at a single site, Chao2 is based on abundance from a single site as well as presence/absence singletons and doubleton species within the entire SbyS matrix, ACE is based on the abundance of abundant taxa and of rare and singlet taxa while considering coverage.
+> The estimator to be used in any particular case should be based on sampling effort as well as the distribution of species and likely the shape of the RAC for the community you are estimating. For communities with many rare species, ACE may underestimate abundance. For communities with low coverage and 
 
 
 
@@ -203,10 +237,12 @@ In the R code chunk below, please do the following:
 
 ```{r}
 
-
-
-
-
+soilbac.S <- S.obs(soilbac.t)
+min.N <- min(rowSums(soilbac.t))
+S.rarefy <- rarefy(x = soilbac.t, sample = min.N, se = TRUE)
+rarecurve(x = soilbac.t, step = 20, col = "blue", cex = 0.6, las = 1)
+abline(0,1,col = 'red')
+text(1500,1500, "1:1", pos = 2, col = 'red')
 
 ```
 
@@ -229,11 +265,12 @@ In the R code chunk below, do the following:
 4. Return the ranked vector
 
 ```{r}
-
-
-
-
-
+RAC <- function(x = ""){
+  x = as.vector(x)
+  x.ab = x[x >0]
+  x.ab.ranked = x.ab[order(x.ab, decreasing = TRUE)]
+  return(x.ab.ranked)
+}
 
 
 ```
@@ -247,17 +284,25 @@ In the R code chunk below, do the following:
 2. Label the x-axis "Rank in abundance" and the y-axis "log(abundance)"
 
 ```{r}
+plot.new()
 
+rac <- RAC(x = site1)
+ranks <- as.vector(seq(1,length(rac)))
+opar <- par(no.readonly = TRUE)
+par(mar = c(5.1,5.1,4.1,2.1))
+plot(ranks, log(rac), type = 'p', axes = F, xlab = "Rank in abundance", ylab = "log(abundance)", las = 1, cex.lab = 1.4, cex.axis = 1.25)
 
+box()
+axis(side = 1, labels = T, cex.axis = 1.25)
+axis(side = 2, las = 1, cex.axis = 1.25, labels = c(1,2,5,10,20), at = log(c(1,2,5,10,20)))
 
-
-
+par <- opar
 
 ```
 
 ***Question 5***: What effect does visualizing species abundance data on a log-scaled axis have on how we interpret evenness in the RAC?
 
-> ***Answer 5***:
+> ***Answer 5***: Log transforming the species abundance data linearizes the RAC. 
 
 
 Now that we have visualized unevennes, it is time to quantify it using Simpson's evenness ($E_{1/D}$) and Smith and Wilson's evenness index ($E_{var}$).
