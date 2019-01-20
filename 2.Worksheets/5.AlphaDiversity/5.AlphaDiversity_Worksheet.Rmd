@@ -1,6 +1,6 @@
 ---
 title: '5\. Worksheet: Alpha Diversity'
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
+author: "Emmi Mueller; Z620: Quantitative Biodiversity, Indiana University"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 geometry: margin=2.54cm
@@ -39,7 +39,6 @@ In the R code chunk below, please provide the code to:
 rm(list=ls())
 getwd()
 setwd("~/GitHub/QB2019_Mueller/2.Worksheets/5.AlphaDiversity")
-install.packages("vegan")
 require("vegan")
 
 ```
@@ -216,7 +215,7 @@ S.ace(soilbac1)
 ***Question 4***: What is the difference between ACE and the Chao estimators? Do the estimators give consistent results? Which one would you choose to use and why?
 
 > ***Answer 4***: ACE is an abundance-based coverage estimator based on a cutoff of rare taxa (<10 individuals at a site) whereas Chao estimates are abundance-based and incidence-based estimators based on singletons and doubletons. The estimators do not give consistent results as Chao1 is based on the abundance of species and singletons and doubletons at a single site, Chao2 is based on abundance from a single site as well as presence/absence singletons and doubleton species within the entire SbyS matrix, ACE is based on the abundance of abundant taxa and of rare and singlet taxa while considering coverage.
-> The estimator to be used in any particular case should be based on sampling effort as well as the distribution of species and likely the shape of the RAC for the community you are estimating. For communities with many rare species, ACE may underestimate abundance. For communities with low coverage and 
+> The estimator to be used in any particular case should be based on sampling effort as well as the distribution of species and likely the shape of the RAC for the community you are estimating. For communities with many rare species, ACE may underestimate abundance such as likely with the soilbac data. The estimates for the BCI data 
 
 
 
@@ -302,7 +301,7 @@ par <- opar
 
 ***Question 5***: What effect does visualizing species abundance data on a log-scaled axis have on how we interpret evenness in the RAC?
 
-> ***Answer 5***: Log transforming the species abundance data linearizes the RAC. 
+> ***Answer 5***: Log transforming the species abundance data allows us to view the highly skewed distribution as less skewed. We are able to view the lower ranked abundances while still being able to observe the high ranked abundances.
 
 
 Now that we have visualized unevennes, it is time to quantify it using Simpson's evenness ($E_{1/D}$) and Smith and Wilson's evenness index ($E_{var}$).
@@ -317,12 +316,15 @@ In the R code chunk below, do the following:
 
 ```{r}
 
+SimpE <-function(x = ""){
+  S <- S.obs(x)
+  x = as.data.frame(x)
+  D <- diversity(x, "inv")
+  E <- (D)/S
+  return(E)
+}
 
-
-
-
-
-
+SimpE(site1)
 
 ```
 
@@ -337,18 +339,19 @@ In the R code chunk below, please do the following:
 3. Compare $E_{1/D}$ and $E_{var}$.
 
 ```{r}
+Evar <- function(x){
+  x <- as.vector(x[x>0])
+  1- (2/pi)*atan(var(log(x)))
+}
 
-
-
-
-
+Evar(site1)
 
 ```
 
 ***Question 6***: Compare estimates of evenness for `site1` of BCI using $E_{1/D}$ and $E_{var}$.
 Do they agree? If so, why? If not, why? What can you infer from the results.
 
-> ***Answer 6***:
+> ***Answer 6***: $E_{var}$ is higher than $E_{1/D}$ because it is based on the log tranformation of abundnace. It is more robust to large differences in the most abundant taxa and allows the lower ranked abundance taxa to be taken into account. From these results we can infer that the BCI data is right skewed. When comparing $E_{var}$ and $E_{1/D}$ for the soilbac1 site you find that this data is even further right skewed than the BCI data.
 
 
 ##5) INTEGRATING RICHNESS AND EVENNESS: DIVERSITY METRICS
@@ -366,13 +369,19 @@ In the R code chunk below, please do the following:
 2. Compare this estimate with the output of `vegan`'s diversity function using method = "shannon".
 
 ```{r}
+ShanH <- function(x = ""){
+  H = 0
+  for (n_i in x){
+    if(n_i >0){
+      p = n_i / sum(x)
+      H = H - p*log(p)
+    }
+  }
+  return(H)
+}
 
-
-
-
-
-
-
+ShanH(site1)
+diversity(site1, index = "shannon")
 
 
 ```
@@ -389,24 +398,31 @@ In the R code chunk below, please do the following:
 
 ```{r}
 
+SimpD <- function(x=""){
+  D = 0
+  N=sum(x)
+  for(n_i in x){
+    D = D+(n_i^2)/(N^2)
+  }
+  return(D)
+}
 
+D.inv <- 1/SimpD(site1)
+D.inv
+D.sub <- 1- SimpD(site1)
+D.sub
 
+diversity(site1, index = "inv")
+diversity(site1, index = "simp")
 
-
-
-
-
-
-
-
-
+Evar(site1)
 
 ```
 
 ***Question 7***: Compare estimates of evenness for `site1` of BCI using $E_{H'}$ and $E_{var}$.
 Do they agree? If so, why? If not, why? What can you infer from the results.
 
-> ***Answer 7***:
+> ***Answer 7***: The estimates for $E_{var}$ and $E_{H'}$ are different because one is a measure of just evenness at site1 (Smith and Wilson's evenness index) and one is an integrated measure of evenness and abundance (Shannon's Diversity).
 
 ### Fisher's $\boldsymbol\alpha$
 
@@ -418,23 +434,18 @@ In the R code chunk below, please do the following:
 
 ```{r}
 
+rac <- as.vector(site1[site1 >0])
+invD <-diversity(rac, "inv")
+invD
 
-
-
-
-
-
-
-
-
-
-
+Fisher <- fisher.alpha(rac)
+Fisher
 
 ```
 
 ***Question 8***: How is Fisher's $\boldsymbol\alpha$ different from $E_{H'}$ and $E_{var}$? What does Fisher's $\boldsymbol\alpha$ take into account that $E_{H'}$ and $E_{var}$ do not?
 
-> ***Answer 8***:
+> ***Answer 8***: Fisher's $\boldsymbol\alpha$ fits the log transformed RAC with a log distribution using the parameter $\boldsymbol\alpha$. The parameter is then able to be used as a diversity index. This is different from $E_{H'}$ as Shannon's entropy does not log transform the data and therefore is less robust to abundant species and different from $E_{var}$ as it takes into account both richness and evenness whereas $E_[var]$ is only based on evenness.
 
 ##6) MOVING BEYOND UNIVARIATE METRICS OF $\alpha$ DIVERSITY
 
@@ -458,9 +469,11 @@ In the R code chunk below, please do the following:
 3. Plot the results of the `radfit()` function using the code provided in the handout.
 
 ```{r}
+RACresults <- radfit(site1)
+RACresults
 
-
-
+plot.new()
+plot(RACresults, las=1, cex.lab = 1.4, cex.axis = 1.25)
 
 
 ```
@@ -470,22 +483,22 @@ In the R code chunk below, please do the following:
 a) Based on the output of `radfit()` and plotting above, discuss which model best fits our rank-abundance curve for `site1`?
 b) Can we make any inferences about the forces, processes, and/or mechanisms influencing the structure of our system, e.g., an ecological community?
 
-> ***Answer 9a***:  
-> ***Answer 9b***:
+> ***Answer 9a***: The best fitting model is  the Mandelbrot model based on the low BIC and AIC values compared to the other models.
+> ***Answer 9b***: As the Mandelbrot model is best fitting we know that the abundance of a species in the RAC is inversely proportional to its rank in abundance. The large $\boldsymbol\beta$ value shows us that there is increased evenness amoung the highly abundant species in this site.
 
 
 ***Question 10***: Answer the following questions about the preemption model:
 a.  What does the preemption model assume about the relationship between total abundance (*N*) and total resources that can be preempted?
 b.  Why does the niche preemption model look like a straight line in the RAD plot?
 
-> ***Answer 10a***:  
-> ***Answer 10b***:
+> ***Answer 10a***:  The niche preemption model assumes that the resources predicts the total abundance of organisms at a site and that each species has the same biomass output per resource.
+> ***Answer 10b***: The niche preemption model looks like a straight line on a RAD plot because it is a geometric decay on non-log plot so when transformed, it becomes linear.
 
 
 
 ***Question 11***: Why is it important to account for the number of parameters a model uses when judging how well it explains a given set of data?
 
-> ***Answer 11***:
+> ***Answer 11***: The more parameters that are used in a model, the better the model will fit. Overfitting models with too many parameters makes them non-generalizable and therefore, a balance must be found between number of parameters and fit of the model.
 
 
 ## SYNTHESIS
@@ -493,10 +506,38 @@ b.  Why does the niche preemption model look like a straight line in the RAD plo
 1.  As stated by Magurran (2004) the  ${D = } \sum p_i^2$ derivation of Simpson's Diversity only applies to communities of infinite size. For anything but an infinitely large community, Simpson's Diversity index is calculated as ${D = } \sum \frac{n_i(n_i -1)} {N(N-1)}$. 
 Assuming a finite community, calculate Simpson's D, 1 - D, and Simpson's inverse (i.e. 1/D) for `site 1` of the BCI site-by-species matrix. 
 
+```{r}
+
+SimpDfinite <- function(x = ""){
+    D = 0
+  N=sum(x)
+  for(n_i in x){
+    D = D+(n_i*(n_i-1))/(N*(N-1))
+  }
+  return(D)
+}
+
+SimpDfinite(site1)
+Dfinite.inv <- 1/SimpDfinite(site1)
+Dfinite.sub <- SimpDfinite(site1)
+Dfinite.inv
+Dfinite.sub
+```
+
 2.  Along with the rank-abundance curve (RAC), another way to visualize the distribution of abundance among species is with a histogram (a.k.a., frequency distribution) that shows the frequency of different abundance classes.
 For example, in a given sample, there may be 10 species represented by a single individual, 8 species with two individuals, 4 species with three individuals, and so on.
 In fact, the rank-abundance curve and the frequency distribution are the two most common ways to visualize the species-abundance distribution (SAD) and to test species abundance models and biodiversity theories.
 To address this homework question, use the R function **hist()** to plot the frequency distribution for `site 1` of the BCI site-by-species matrix, and describe the general pattern you see.
+
+```{r}
+site1.df <- unlist(site1[1,])
+site1.df <- as.vector(site1.df)
+is.vector(site1.df)
+
+hist(site1.df, main ="Histogram of species abundance", xlab = "species abundance")
+
+```
+>***Synthesis 2:*** The Histogram of species abundance shows that many species have 0 or a small number of individuals while very few species have many individuals.
 
 3.  We asked you to find a biodiversity dataset with your partner.
 This data could be one of your own or it could be something that you obtained from the literature. 
@@ -504,6 +545,16 @@ Load that dataset.
 How many sites are there?
 How many species are there in the entire site-by-species matrix?
 Any other interesting observations based on what you learned this week?
+
+```{r}
+#install.packages("OTUtable")
+require("OTUtable")
+data(otu_table)
+
+str(otu_table, max.level=0)
+```
+
+>***Synthesis 3:*** There are 6208 species and 1387 sites in this matrix. The 1387 sites come from the same 8 bogs at different times periods meaning that we will be able to clean up this matrix to a much smaller site-by-species matrix once we choose a time point to focus on.
 
 ## SUBMITTING YOUR ASSIGNMENT
 Use Knitr to create a PDF of your completed alpha_assignment.Rmd document, push it to GitHub, and create a pull request.
