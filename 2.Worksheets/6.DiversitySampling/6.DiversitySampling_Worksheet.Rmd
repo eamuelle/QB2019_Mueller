@@ -49,49 +49,90 @@ require("ggplot2")
 #Load Jelly Bean dataset, declare groups and remove group row from table
 
 jellybean <- read.table("./JellyBeans_site.txt", sep = "\t", header = TRUE, row.names = 1)
-groupA = c("Andrea", "Brianna", "Brooke","Emmi", "Mackenzie")
-groupB = c("Diego", "Mark", "Lana", "Dustin")
-jellybean[,1] = as.factor(jellybean[,1])
+jellybeangroups <- as.data.frame(jellybean["Group"])
+jellybean <- jellybean[,2:29]
 
-#Create function S.obs and print the species number found per site
-
+#Create function S.obs and print the species number found by group
 S.obs <- function(x = ""){
    rowSums(x > 0) * 1
 }
-S.obsjelly <- S.obs(jellybean[,2:29])
-S.obsA <- S.obs(jellybean[groupA,2:29])
-S.obsB <- S.obs(jellybean[groupB,2:29])
-
-print(S.obsjelly)
-
-#Create function C to calcuate coverage and print coverage of all sites
-
 C <- function(x = ""){
   1 - (rowSums(x == 1) / rowSums(x))
 }
 
-Cjelly <-as.data.frame(C(jellybean[,2:29]))
-C.obsA <- C(jellybean[groupA,2:29])
-C.obsB <- C(jellybean[groupB,2:29])
-
-print(Cjelly)
-
 #Rarefaction curve
-min.N <- min(rowSums(jellybean[,2:29]))
-jelly.rarefy <- rarefy(x = jellybean[,2:29], sample = min.N, se = TRUE)
-rarecurve(x = jellybean[,2:29], step = 20, col = "blue", cex = 0.6, las = 1)
-abline(0,1,col = 'red')
-text(1500,1500, "1:1", pos = 2, col = 'red')
+min.N <- min(rowSums(jellybean))
+jelly.rarefy <- rarefy(x = jellybean, sample = min.N, se = TRUE)
+rarecurve(x = jellybean, step = 10, col = "blue", cex = 0.6, las = 1, main = "Jellybean rarefaction curve")
+abline(0,1, col = 'red')
+abline(v = min.N, col = 'green')
 
-#Resample
+#Rarefy sample and generate Group samples
+jelly.rarefied <- rrarefy(x = jellybean, sample = min.N)
+x <- rep(0, ncol(jelly.rarefied))
+names <- row.names(jelly.rarefied)
+jelly.rarefied <- rbind(x, jelly.rarefied)
+jelly.rarefied <- rbind(x, jelly.rarefied)
+row.names(jelly.rarefied) <- c("GroupA", "GroupB", names)
+for(column in colnames(jelly.rarefied)){
+  for (row in rownames(jelly.rarefied)){
+    if (row == "GroupA" || row == "GroupB"){}
+    else if (jellybeangroups[row,] == "A"){
+          jelly.rarefied["GroupA", column] <- jelly.rarefied["GroupA", column] + jelly.rarefied[row, column]
+    }
+    else if (jellybeangroups[row,] == "B"){
+          jelly.rarefied["GroupB", column] <- jelly.rarefied["GroupB", column] + jelly.rarefied[row, column]
+    }
+  }
+}
 
-
+#Print rarefied sample individuals, species richness, and coverage
+jelly.rarefied <- as.data.frame(jelly.rarefied)
+for (row in row.names(jelly.rarefied)){
+  if (row == "GroupA"){
+    cat("\n", row)
+    cat("Individuals:", as.numeric(rowSums(jelly.rarefied[row,])), " ")
+    cat("Species:",as.numeric(S.obs(jelly.rarefied[row,])), " ")
+    cat("Coverage:",as.numeric(C(jelly.rarefied[row,])),"\n")
+  }
+  else if (row != "GroupB" && jellybeangroups[row, ] == "A"){
+    print(row)
+    cat("Individuals:", as.numeric(rowSums(jelly.rarefied[row,])), " ")
+    cat("Species:",as.numeric(S.obs(jelly.rarefied[row,])), " ")
+    cat("Coverage:",as.numeric(C(jelly.rarefied[row,])),"\n")
+  }
+}
+for (row in row.names(jelly.rarefied)){
+  if (row == "GroupB"){
+    cat("\n",row)
+    cat("Individuals:", as.numeric(rowSums(jelly.rarefied[row,])), " ")
+    cat("Species:",as.numeric(S.obs(jelly.rarefied[row,])), " ")
+    cat("Coverage:",as.numeric(C(jelly.rarefied[row,])),"\n")
+  }
+  else if (row != "GroupA" && jellybeangroups[row,] == "B"){
+    print(row)
+    cat("Individuals:", as.numeric(rowSums(jelly.rarefied[row,])), " ")
+    cat("Species:",as.numeric(S.obs(jelly.rarefied[row,])), " ")
+    cat("Coverage:",as.numeric(C(jelly.rarefied[row,])),"\n")
+  }
+}
 ```
-
 ```{r}
-#Generate figure
-par(mfrow=c(2,2))
+RAC <- function(x = ""){
+  x = as.vector(x)
+  x.ab = x[x >0]
+  x.ab.ranked = x.ab[order(x.ab, decreasing = TRUE)]
+  return(x.ab.ranked)
+}
+RACresultsA <- radfit(jelly.rarefied["GroupA",])
+RACresultsA
+RACresultsB <- radfit(jelly.rarefied["GroupB",])
+RACresultsB
+par(mfrow = c(1,2))
+plot(rad.zipfbrot(jelly.rarefied["GroupA",]), main = "Group A Rank Abundance Curve", xlab = "Rank in abundance", ylab = "log(abundance)")
+plot(rad.lognormal(jelly.rarefied["GroupB",]), main = "Group B Rank Abundance Curve", xlab = "Rank in abundance", ylab = "log(abundance)")
 ```
+
 ## 3) Figure caption 
 
 Write an informative yet succicnt (~5 sentences) caption that creates a "stand-alone" figure. 
