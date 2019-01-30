@@ -48,11 +48,19 @@ require("ggplot2")
 ```{r}
 #Load Jelly Bean dataset, declare groups and remove group row from table
 
+jellysource <- as.data.frame(read.table("./JellyBeans.Source.Reduced.txt", sep ="\t", header = TRUE))
+jellysource <- as.data.frame(t(jellysource), stringsAsFactors = FALSE)
+typeof(jellysource["Count",])
+jellysource["Count",] <- as.numeric(jellysource["Count",])
+typeof(jellysource["Count",])
+jellysource <- as.data.frame(jellysource)
 jellybean <- read.table("./JellyBeans_site.txt", sep = "\t", header = TRUE, row.names = 1)
 jellybeangroups <- as.data.frame(jellybean["Group"])
 jellybean <- jellybean[,2:29]
 
-#Create function S.obs and print the species number found by group
+```
+```{r}
+#Create function S.obs and C to calculate observed abundance and coverage
 S.obs <- function(x = ""){
    rowSums(x > 0) * 1
 }
@@ -90,7 +98,7 @@ for(column in colnames(jelly.rarefied)){
 jelly.rarefied <- as.data.frame(jelly.rarefied)
 for (row in row.names(jelly.rarefied)){
   if (row == "GroupA"){
-    cat("\n", row)
+    cat("\n", row, "\n")
     cat("Individuals:", as.numeric(rowSums(jelly.rarefied[row,])), " ")
     cat("Species:",as.numeric(S.obs(jelly.rarefied[row,])), " ")
     cat("Coverage:",as.numeric(C(jelly.rarefied[row,])),"\n")
@@ -104,7 +112,7 @@ for (row in row.names(jelly.rarefied)){
 }
 for (row in row.names(jelly.rarefied)){
   if (row == "GroupB"){
-    cat("\n",row)
+    cat("\n",row, "\n")
     cat("Individuals:", as.numeric(rowSums(jelly.rarefied[row,])), " ")
     cat("Species:",as.numeric(S.obs(jelly.rarefied[row,])), " ")
     cat("Coverage:",as.numeric(C(jelly.rarefied[row,])),"\n")
@@ -118,25 +126,75 @@ for (row in row.names(jelly.rarefied)){
 }
 ```
 ```{r}
-RAC <- function(x = ""){
-  x = as.vector(x)
-  x.ab = x[x >0]
-  x.ab.ranked = x.ab[order(x.ab, decreasing = TRUE)]
-  return(x.ab.ranked)
+#Create ACE estimator function
+S.ace <- function(x = "", thresh = 10){
+  x <- x[x>0]
+  S.abund <- length(which(x > thresh))
+  S.rare <- length(which(x <= thresh))
+  singlt <- length(which(x ==1))
+  N.rare <- sum(x[which(x <= thresh)])
+  C.ace <- 1 - (singlt /N.rare)
+  i <- c(1:thresh)
+  count <- function(i,y){
+    length(y[y==i])
+  }
+  a.1 <- sapply(i,count,x)
+  f.1 <-(i*(i-1))*a.1
+  G.ace <-(S.rare/C.ace)*(sum(f.1)/(N.rare*(N.rare-1)))
+  S.ace <- S.abund + (S.rare/C.ace) + (singlt/C.ace) * max(G.ace,0)
+  return(S.ace)
 }
+
+#Estimate ACE for the Source, Group A, and Group B
+
+Ace <- c(S.ace(as.numeric(jellysource["Count",])),S.ace(jelly.rarefied["GroupA",]), S.ace(jelly.rarefied["GroupB",]))
+Ace <- as.data.frame(Ace, row.names = c("Source","GroupA", "GroupB"))
+print(Ace)
+
+```
+
+```{r}
+#Test RAD model fits to determine best fit
 RACresultsA <- radfit(jelly.rarefied["GroupA",])
+cat("Group A RAD model fits", "\n")
 RACresultsA
 RACresultsB <- radfit(jelly.rarefied["GroupB",])
+cat("\n", "Group B RAD model fits", "\n")
 RACresultsB
-par(mfrow = c(1,2))
-plot(rad.zipfbrot(jelly.rarefied["GroupA",]), main = "Group A Rank Abundance Curve", xlab = "Rank in abundance", ylab = "log(abundance)")
-plot(rad.lognormal(jelly.rarefied["GroupB",]), main = "Group B Rank Abundance Curve", xlab = "Rank in abundance", ylab = "log(abundance)")
+RACresultsfull <- radfit(as.numeric(jellysource["Count",]))
+cat("\n", "Source RAD model fits", "\n")
+RACresultsfull
+
+#Generate figure of RAD and SAD for Source, Group A and Group B
+
+par(mfrow = c(2,3), main = "SAD and RAD for Vicariance event source and sampled populations")
+plot(rad.zipfbrot(as.numeric(jellysource["Count",])), main = "Source RAC", xlab = "Rank in abundance", ylab = "log(abundance)")
+plot(rad.zipfbrot(jelly.rarefied["GroupA",]), main = "Group A RAC", xlab = "Rank in abundance", ylab = "log(abundance)")
+plot(rad.lognormal(jelly.rarefied["GroupB",]), main = "Group B RAC", xlab = "Rank in abundance", ylab = "log(abundance)")
+
+
+jelly.full.df <-unlist(jellysource["Count",])
+jelly.full.df <- as.vector(as.numeric(jelly.full.df))
+
+hist(jelly.full.df, main = "Source SAD", xlab = "Species abundance")
+
+jelly.A.df <- unlist(jelly.rarefied["GroupA",])
+jelly.A.df <- as.vector(jelly.A.df)
+
+hist(jelly.A.df, main ="Group A SAD", xlab = "species abundance")
+
+jelly.B.df <- unlist(jelly.rarefied["GroupB",])
+jelly.B.df <- as.vector(jelly.B.df)
+
+hist(jelly.B.df, main = "Group B SAD", xlab = "Species abundance")
 ```
 
 ## 3) Figure caption 
 
 Write an informative yet succicnt (~5 sentences) caption that creates a "stand-alone" figure. 
 Take a peek at figures and figure captions in a paper published in your favorite journal for inspiration.
+
+>Figure 1: Rank abundance curves for the source and divided communities of a vicariance event show a Mantelbrot best fit models for the Source and Group A community and a Lognormal best fit model for the Group B community. Group B is more even than the source community likely due random division of the source community at the time of the vicariance event. Group A shows a best fit model and RAC most similar to that of the Source community. Species abundance distributions for the Source, A and B communities show a higher abundance of the most abundance spcies in the Group A community and higher frequency of low abundance species.
 
 ## SUBMITTING YOUR ASSIGNMENT
 Use Knitr to create a PDF of your completed 6.DiversisitySampling_Worksheet.Rmd document, push it to GitHub, and create a pull request.
