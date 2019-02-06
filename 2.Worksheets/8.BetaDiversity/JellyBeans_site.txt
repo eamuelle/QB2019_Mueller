@@ -1,0 +1,10 @@
+Site	Group	Red	RedShinny	OrangeSpe	OrangeDrk	OrangeBrgt	OrangeShn	OrangeLight	OrangSuperShn	YellowSld	YellowTrans	Watermellon	GreenTrans	GreenTrans2	GreenSoild	GreenSuperShn	GreenMintCho	AquaSuperShn	BlueDrkShn	BlueDrk	BlueMuted	PurpleShn	PurpleSpot	PinkShn	PinkSpot	Rainbow	WhiteBrownSP	WhiteSuperShn	WhiteSolid
+Andrea	A	1	1	16	1	0	1	2	2	1	1	11	1	0	2	1	1	1	0	21	3	1	2	2	3	1	2	1	1
+Brianna	A	3	0	12	2	7	0	1	1	3	1	9	3	1	1	2	1	1	0	19	2	1	0	1	1	2	1	0	0
+Brooke	A	1	0	9	0	1	4	3	1	5	3	11	5	0	3	0	0	0	1	15	5	2	2	1	1	1	1	0	0
+Diego	B	1	0	8	1	2	3	4	4	3	6	7	4	0	4	1	0	1	3	15	1	1	2	4	1	2	0	1	1
+Dustin	B	1	2	6	0	0	4	4	3	0	7	11	7	0	0	2	1	3	3	12	1	1	5	4	1	1	1	0	0
+Emmi	A	2	2	14	1	3	0	2	3	0	1	11	1	1	2	1	3	3	2	14	5	0	2	1	3	2	1	1	1
+Lana	B	3	2	11	0	4	2	0	1	0	4	7	4	0	1	0	0	3	0	10	3	1	0	1	4	1	4	1	0
+Mackenzie	A	5	1	7	1	4	2	3	2	0	3	12	2	0	3	0	2	2	1	14	1	1	0	0	1	2	2	1	0
+Mark	B	3	0	7	1	3	1	5	1	3	3	5	4	0	3	1	1	3	1	8	0	0	3	0	0	0	2	1	0
