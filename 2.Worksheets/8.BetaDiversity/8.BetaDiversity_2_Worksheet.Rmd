@@ -1,6 +1,6 @@
 ---
 title: '8\. Worksheet: Among Site (Beta) Diversity -- Part 2'
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
+author: "Emmi Mueller; Z620: Quantitative Biodiversity, Indiana University"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 geometry: margin=2.54cm
@@ -40,10 +40,11 @@ In the R code chunk below, provide the code to:
 4. load the `vegan` R package (be sure to install if needed).  
 
 ```{r}
+rm(list=ls())
+setwd("~/GitHub/QB2019_Mueller/2.Worksheets/8.BetaDiversity")
+getwd
 
-
-
-
+require(vegan)
 ```
 
 ## 2) LOADING DATA
@@ -52,8 +53,8 @@ In the R code chunk below, load the `doubs` dataset from the `ade4` package
 
 ```{r}
 # note, pleae do not print the dataset when submitting
-
-
+require(ade4)
+data("doubs")
 
 ```
 ## 3) HYPOTHESIS TESTING
@@ -67,21 +68,18 @@ In the code chunk below, test the hypothesis that fish community composition var
 2. use the multivariate analyses for categorical predictors to describe how fish community structure relates to habitat quality.
 
 ```{r}
+fish <- doubs$fish
+fish <- fish[-8,]
+quality <- c(rep("HQ", 13), rep("MQ", 5), rep("LQ", 6), rep("MQ", 5))
 
-
-
-
-
-
-
-
+adonis(fish ~ quality, method = "bray", permutations = 999)
 
 ```
 
 ***Question 1***: Based on the PERMANOVA, IndVal, and phi coefficient analyses, what did you learn about the relationship between habitat quality and the fish species composition?
 Are the different analyses consistent with one another and do they agree with the visualizations (heat maps, cluster dendograms, ordinations) that you created?
 
-> ***Answer 1***: 
+> ***Answer 1***: Quality is a significant predictor of fish community composition. This is consistent with the visualizations that showed that sites were grouped together by region of the river. If river quality is grouped by sites then it makes sense that sites grouped together would be dependent on quality.
 
 
 ### B.  Multivariate Procedures for Continuous Designs
@@ -93,17 +91,16 @@ In the R code chunk below, do the following:
 2. use a Mantel test to test the hypothesis that fish assemblages are correlated with stream environmental variables.
 
 ```{r}
+fish.dist <- vegdist(fish, method = "bray")
+env.dist <- vegdist(scale(doubs$env[-8,]), method = "euclid")
 
-
-
-
-
+mantel(fish.dist, env.dist)
 ```
 
 ***Question 2***: What do the results from our Mantel test suggest about fish diversity and stream environmental conditions? 
 How does this relate to your hypothesis about stream quality influencing fish communities?
 
-> ***Answer 2***:  
+> ***Answer 2***:  Fish community composition is correlated with environmental variables. This means that river quality is likely correlated with the environmental factors that are measured in the env matrix.
 
 ### ii.  Constrained Ordination
 In the R code chunk below, do the following:  
@@ -116,30 +113,51 @@ In the R code chunk below, do the following:
 6. plot the constrained ordination results including labeled points for each site, and
 7. add vectors that demonstrate the influence of each environmental factor the constrained ordination.   
 ```{r}
+env.chem <- as.matrix(doubs$env[-8,5:11])
 
+doubs.dbrda <- dbrda(fish.dist ~ ., as.data.frame(env.chem))
 
+require(psych)
+psych::corr.test(env.chem)
 
+doubs.dbrda.modO <- dbrda(fish.dist ~ 1, as.data.frame(env.chem))
 
+doubs.dbrda.mod1 <- dbrda(fish.dist ~ ., as.data.frame(env.chem))
+doubs.dbrda <- ordiR2step(doubs.dbrda.modO, doubs.dbrda.mod1, perm.max = 200)
 
+doubs.dbrda$call
+doubs.dbrda$anova
+ordiplot(doubs.dbrda)
 
+permutest(doubs.dbrda, permutations = 999)
+envfit(doubs.dbrda, env.chem[,c(4,6,7)], perm = 999)
 
+dbrda.explainvar1 <- round(doubs.dbrda$CCA$eig[1]/ sum(c(doubs.dbrda$CCA$eig, doubs.dbrda$CA$eig)), 3) * 100
+dbrda.explainvar2 <- round(doubs.dbrda$CCA$eig[2]/ sum(c(doubs.dbrda$CCA$eig, doubs.dbrda$CA$eig)), 3) * 100
 
+par(mar = c(5,5,4,4) + 0.1)
 
+plot(scores(doubs.dbrda, display = "wa"), xlim = c(-1.3, 1.1), ylim = c(-1.1, 2.7), xlab = paste("dbRDA 1 (", dbrda.explainvar1, "%)", sep = ""), ylab = paste("dbRDA 2 (", dbrda.explainvar2, "%)", sep = ""), pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
 
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las=1)
+axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las=1)
+abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
 
+points(scores(doubs.dbrda, display = "wa"), pch = 19, cex = 3, bg = "gray", col = "gray")
+text(scores(doubs.dbrda, display = "wa"), labels = row.names(scores(doubs.dbrda, display = "wa")))
 
+vectors <- scores(doubs.dbrda, display = "bp")
 
-
-
-
-
-
-
+arrows(0, 0, vectors[,1], vectors[,2], lwd = 2, lty = 1, length = 0.2, col = "red")
+text(vectors[,1], vectors[,2], pos = 3, labels = row.names(vectors))
+axis(side=3, lwd.ticks = 2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2, at = pretty(range(vectors[,1]))*2, labels = pretty(range(vectors[,1])))
+axis(side=4, lwd.ticks = 2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2, at = pretty(range(vectors[,2]))*2, labels = pretty(range(vectors[,2])))
 ```
 
 ***Question 3***: Based on the constrained ordination, what are the environmental variables (or groups of correlated variables) that seem to be contributing to variation in fish community structure?
 
-> ***Answer 3***: 
+> ***Answer 3***: The groups of correlated variables that are likely contributing to fish community structure are dissolved oxygen levels, nitrate levels and biological demand for oxygen.
 
 ### iii. Variation Partitioning
 In the code chunk below,   
@@ -151,27 +169,139 @@ In the code chunk below,
 5. Partition the variation among sites into the relative importance of space, environment, spatially structured environment, and residuals,
 6. Plot the variation partitioning output to visualize it.  
 ```{r}
+doubs.dbrda$anova
 
+env.mod <- model.matrix(~ oxy + bdo+ nit, as.data.frame(env.chem))[,-1]
 
+rs <- rowSums(fish)/sum(fish)
+doubs.pcnmw <- pcnm(dist(doubs$xy[-8,]), w = rs, dist.ret = T)
+doubs.pcnmw$values > 0
 
+doubs.space <-as.data.frame(scores(doubs.pcnmw))
+doubs.pcnm.modO <- dbrda(fish.dist ~ 1, doubs.space)
+doubs.pcnm.mod1 <- dbrda(fish.dist ~ ., doubs.space)
+step.pcnm <- ordiR2step(doubs.pcnm.modO, doubs.pcnm.mod1, perm.max = 200)
+plot(step.pcnm)
 
+step.pcnm$anova
 
+space.mod <- model.matrix(~ PCNM2 + PCNM3 + PCNM5 + PCNM1 + PCNM13 +PCNM16 + PCNM6, doubs.space)[,-1]
 
+doubs.total.env <- dbrda(fish.dist ~ env.mod)
+doubs.total.space <- dbrda(fish.dist ~ space.mod)
 
+doubs.env.cond.space <- dbrda(fish.dist ~ env.mod + Condition(space.mod))
+doubs.space.cond.env <- dbrda(fish.dist ~ space.mod + Condition(env.mod))
+
+permutest(doubs.env.cond.space, permutations = 999)
+permutest(doubs.space.cond.env, permutations = 999)
+permutest(doubs.total.env, permutations = 999)
+permutest(doubs.total.space, permutations = 999)
+
+doubs.varpart <- varpart(fish.dist, env.mod, space.mod)
+doubs.varpart
+
+par(mar = c(2,2,2,2))
+plot(doubs.varpart)
+text(1,0.25, "Space")
+text(0,0.25, "Env")
+mtext("Variation Partitioning of \nDoubs Fish Diversity", side = 3, line = -3)
 ```
 
 ***Question 4***: Interpret the variation partitioning results.   
 
-> ***Answer 4***: 
+> ***Answer 4***: Spatially structured environments have the largest effect on fish diversity. Space and environment individually play less of a role in 
 
 ## SYNTHESIS
 
 1) Using the jelly bean data from class (i.e., JellyBeans.txt), perform a PERMANOVA to test whether or not the vicariance event (random splitting of source community) had an affect on jelly bean composition.
 Based on your previous analyses with this data set, what are your thoughts about the importance of stochastic vs. deterministic factors on estimates of biodiversity?
+```{r}
+jellyAB <- read.table("./JellyBeans_site.txt", header = TRUE, sep = "\t", row.names = 1)
+groups <- c("A", "A", "A","B","B","A","B","A", "B")
+jellyAB[,"GreenTrans"] <- jellyAB[,"GreenTrans"]+jellyAB[,"GreenTrans2"]
+jellyAB[,"Rainbow"] <- jellyAB[,"WhiteSolid"] + jellyAB[,"Rainbow"]
+jellyAB[,c("Group", "GreenTrans2", "WhiteSolid")] <- list(NULL)
+
+adonis(jellyAB ~ groups, method = "bray", permutations = 999)
+```
+>***Synthesis 1:*** The PERMANOVA shows that the group is a significant predictor of jelly bean community composition. This means that the deterministic factor of the splitting of the source community plays an important role in determining final community compositions, something that has been supported by clustering yet stochastic factors still play a role in shaping the community as can be seen by the large R^2 value of the residuals. 
 
 2) Load the dataset you are using for your Team Project. 
 Perform an ordination to visualize your dataset.
 Using this ordination, develop some hypotheses relevant to $\beta$-diversity.
 Use a statistic to test one of these hypotheses.
 Succinctly explain the finding and its relevance to your system.
+
+***dbRDA***
+
+require("OTUtable")
+data(otu_table)
+otu_table <- as.data.frame(t(otu_table))
+JUL07 <- c("CBE02JUL07.R1", "FBE02JUL07.R1", "HKE04JUL07.R1", "MAE04JUL07.R1", "NSE03JUL07.R1", "SSE03JUL07.R1", "TBE02JUL07.R1", "WSE03JUL07")
+otu_JUL07 <- otu_table[grep(paste(JUL07, collapse = "|"), row.names(otu_table)),]
+row.names(otu_JUL07) <- c("Crystal Bog", "Forestry Bog", "Hell's Kitchen", "Mary Lake", "North Sparkling Bog", "South Sparkling Bog", "Trout Bog", "West Sparkling Bog")
+
+Set up metadata for JUL07 sites
+data(metadata)
+rows <- c(4962, 4971,4977,4982, 4988, 4998, 5004,5025)
+metadata_JUL07 <- metadata[rows, -1]
+row.names(metadata_JUL07) <- c("Trout Bog", "Crystal Bog", "Forestry Bog","North Sparkling Bog", "Sourth Sparkling Bog", "West Sparkling Bog", "Hell's Kitchen", "Mary Lake")
+num = 1
+rows <- c(4970,4976,4987,4981,4997, 5003, 5024, 5048)
+while(num < nrow(metadata_JUL07)){
+  depth_current <- metadata$Depth[rows[num]]
+  metadata_JUL07$Depth[num] <- depth_current
+  num <- num + 1
+}
+metadata_JUL07 <- metadata_JUL07[,c("Depth", "DO", "Temperature")]
+bogcca <- cca(otu_JUL07, metadata_JUL07)
+
+Mantel Test
+jul07.dist <- vegdist(otu_JUL07, method = "bray")
+jul07.env.dist <- vegdist(scale(metadata_JUL07), method = "euclid")
+mantel(jul07.dist, jul07.env.dist)
+dbRDA from metadata
+metadata_JUL07 <- as.matrix(metadata_JUL07)
+print(as.data.frame(metadata_JUL07))
+
+bog.dbrda <- dbrda(jul07.dist ~ ., as.data.frame(metadata_JUL07))
+
+require(psych)
+psych::corr.test(metadata_JUL07)
+
+bog.dbrda.modO <- dbrda(jul07.dist ~ 1, as.data.frame(metadata_JUL07))
+bog.dbrda.mod1 <- dbrda(jul07.dist ~ ., as.data.frame(metadata_JUL07))
+bog.dbrda <- ordiR2step(bog.dbrda.modO, bog.dbrda.mod1, perm.max = 200)
+
+bog.dbrda$call
+bog.dbrda$anova
+ordiplot(bog.dbrda)
+
+permutest(bog.dbrda, permutations = 999)
+envfit(bog.dbrda, metadata_JUL07, perm = 999)
+
+dbrda.explainvar1 <- round(bog.dbrda$CCA$eig[1]/ sum(c(bog.dbrda$CCA$eig, bog.dbrda$CA$eig)), 3) * 100
+dbrda.explainvar2 <- round(bog.dbrda$CCA$eig[2]/ sum(c(bog.dbrda$CCA$eig, bog.dbrda$CA$eig)), 3) * 100
+
+par(mar = c(5,5,4,4) + 0.1)
+
+plot(scores(bog.dbrda, display = "wa"), xlim = c(-1.3, 1.1), ylim = c(-1.1, 2.7), xlab = paste("dbRDA 1 (", dbrda.explainvar1, "%)", sep = ""), ylab = paste("dbRDA 2 (", dbrda.explainvar2, "%)", sep = ""), pch = 16, cex = 2.0, type = "n", cex.lab = 1.5, cex.axis = 1.2, axes = FALSE)
+
+axis(side = 1, labels = T, lwd.ticks = 2, cex.axis = 1.2, las=1)
+axis(side = 2, labels = T, lwd.ticks = 2, cex.axis = 1.2, las=1)
+abline(h = 0, v = 0, lty = 3)
+box(lwd = 2)
+
+points(scores(bog.dbrda, display = "wa"), pch = 19, cex = 3, bg = "gray", col = "gray")
+text(scores(bog.dbrda, display = "wa"), labels = row.names(scores(bog.dbrda, display = "wa")))
+
+vectors <- scores(bog.dbrda, display = "bp")
+
+arrows(0, 0, vectors[,1], vectors[,2], lwd = 2, lty = 1, length = 0.2, col = "red")
+text(vectors[,1], vectors[,2], pos = 3, labels = row.names(vectors))
+axis(side=3, lwd.ticks = 2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2, at = pretty(range(vectors[,1]))*2, labels = pretty(range(vectors[,1])))
+axis(side=4, lwd.ticks = 2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2, at = pretty(range(vectors[,2]))*2, labels = pretty(range(vectors[,2])))
+
+>***Synthesis 2:*** We predict that beta diversity will decrease with increasing distance between sites. If this is not the case, we predict that beta diversity will be correlated with an environmental variable such as DO or pH.
 
