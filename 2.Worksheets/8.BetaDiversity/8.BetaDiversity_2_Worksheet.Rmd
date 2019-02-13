@@ -1,6 +1,6 @@
 ---
 title: '8\. Worksheet: Among Site (Beta) Diversity -- Part 2'
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
+author: "Emmi Mueller; Z620: Quantitative Biodiversity, Indiana University"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 geometry: margin=2.54cm
@@ -233,7 +233,8 @@ Using this ordination, develop some hypotheses relevant to $\beta$-diversity.
 Use a statistic to test one of these hypotheses.
 Succinctly explain the finding and its relevance to your system.
 
-```{r}
+***dbRDA***
+
 require("OTUtable")
 data(otu_table)
 otu_table <- as.data.frame(t(otu_table))
@@ -241,11 +242,8 @@ JUL07 <- c("CBE02JUL07.R1", "FBE02JUL07.R1", "HKE04JUL07.R1", "MAE04JUL07.R1", "
 otu_JUL07 <- otu_table[grep(paste(JUL07, collapse = "|"), row.names(otu_table)),]
 row.names(otu_JUL07) <- c("Crystal Bog", "Forestry Bog", "Hell's Kitchen", "Mary Lake", "North Sparkling Bog", "South Sparkling Bog", "Trout Bog", "West Sparkling Bog")
 
-
-#Set up metadata for JUL07 sites
+Set up metadata for JUL07 sites
 data(metadata)
-#md_JUL07 <- c("CBH02JUL07", "FBH02JUL07", "HKH04JUL07", "MAH04JUL07", "NSH03JUL07", "SSH03JUL07", "TBH02JUL07", "WSH03JUL07")
-#metadata_JUL07 <- metadata[grep(paste(md_JUL07, collapse = "|"), metadata$Sample_Name,]
 rows <- c(4962, 4971,4977,4982, 4988, 4998, 5004,5025)
 metadata_JUL07 <- metadata[rows, -1]
 row.names(metadata_JUL07) <- c("Trout Bog", "Crystal Bog", "Forestry Bog","North Sparkling Bog", "Sourth Sparkling Bog", "West Sparkling Bog", "Hell's Kitchen", "Mary Lake")
@@ -256,23 +254,16 @@ while(num < nrow(metadata_JUL07)){
   metadata_JUL07$Depth[num] <- depth_current
   num <- num + 1
 }
-
 metadata_JUL07 <- metadata_JUL07[,c("Depth", "DO", "Temperature")]
-
-
-#cca from metadata
 bogcca <- cca(otu_JUL07, metadata_JUL07)
 
-
-#Mantel Test
+Mantel Test
 jul07.dist <- vegdist(otu_JUL07, method = "bray")
 jul07.env.dist <- vegdist(scale(metadata_JUL07), method = "euclid")
-
 mantel(jul07.dist, jul07.env.dist)
-
-
-#dbRDA from metadata
+dbRDA from metadata
 metadata_JUL07 <- as.matrix(metadata_JUL07)
+print(as.data.frame(metadata_JUL07))
 
 bog.dbrda <- dbrda(jul07.dist ~ ., as.data.frame(metadata_JUL07))
 
@@ -287,7 +278,7 @@ bog.dbrda$call
 bog.dbrda$anova
 ordiplot(bog.dbrda)
 
-#permutest(bog.dbrda, permutations = 999)
+permutest(bog.dbrda, permutations = 999)
 envfit(bog.dbrda, metadata_JUL07, perm = 999)
 
 dbrda.explainvar1 <- round(bog.dbrda$CCA$eig[1]/ sum(c(bog.dbrda$CCA$eig, bog.dbrda$CA$eig)), 3) * 100
@@ -311,5 +302,6 @@ arrows(0, 0, vectors[,1], vectors[,2], lwd = 2, lty = 1, length = 0.2, col = "re
 text(vectors[,1], vectors[,2], pos = 3, labels = row.names(vectors))
 axis(side=3, lwd.ticks = 2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2, at = pretty(range(vectors[,1]))*2, labels = pretty(range(vectors[,1])))
 axis(side=4, lwd.ticks = 2, cex.axis=1.2, las = 1, col = "red", lwd = 2.2, at = pretty(range(vectors[,2]))*2, labels = pretty(range(vectors[,2])))
-```
+
+>***Synthesis 2:*** We predict that beta diversity will decrease with increasing distance between sites. If this is not the case, we predict that beta diversity will be correlated with an environmental variable such as DO or pH.
 
