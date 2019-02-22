@@ -1,6 +1,6 @@
 ---
 title: '12\.Phylogenetic Diversity - Communities'
-author: "Student Name; Z620: Quantitative Biodiversity, Indiana University"
+author: "Emmi Mueller; Z620: Quantitative Biodiversity, Indiana University"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 geometry: margin=2.54cm
@@ -43,8 +43,19 @@ In the R code chunk below, provide the code to:
 5. load the required R source file.
 
 ```{r}
+rm(list = ls())
+getwd()
+setwd("~/GitHub/QB2019_Mueller/2.Worksheets/12.PhyloCom")
 
+package.list <- c('picante', 'ape', 'vegan', 'seqinr','fossil','reshape','simba')
+for(package in package.list){
+  if(!require(package, character.only = TRUE, quietly = TRUE)){
+    install.packages(package, repos='http://cran.us.r-project.org')
+    library(package, character.only = TRUE)
+  }
+}
 
+source("./bin/MothurTools.R")
 ```
 
 ## 2) DESCRIPTION OF DATA
@@ -69,6 +80,17 @@ In the R code chunk below, do the following:
 6. load the taxonomic data using the `read.tax()` function from the source-code file.
 
 ```{r}
+env <- read.table("data/20130801_PondDataMod.csv", sep = ",", header = TRUE)
+env <- na.omit(env)
+
+comm <- read.otu(shared = "./data/INPonds.final.rdp.shared", cutoff = "1")
+comm <- comm[grep("*-DNA", rownames(comm)),]
+rownames(comm) <- gsub("\\-DNA", "", rownames(comm))
+rownames(comm) <- gsub("\\_", "", rownames(comm))
+
+comm <- comm[rownames(comm) %in% env$Sample_ID, ]
+comm <- comm[,colSums(comm) > 0]
+tax <- read.tax(taxonomy = "./data/INPonds.final.rdp.1.cons.taxonomy")
 
 
 ```
@@ -85,8 +107,23 @@ Next, in the R code chunk below, do the following:
 9. plot the rooted tree.
 
 ```{r}
+ponds.cons <- read.alignment(file = "./data/INPonds.final.rdp.1.rep.fasta", format = "fasta")
+ponds.cons$nam <- gsub("\\|.*$", "", gsub("^.*?\t", "", ponds.cons$nam))
 
+outgroup <- read.alignment(file = "./data/methanosarcina.fasta", format = "fasta")
 
+DNAbin <- rbind(as.DNAbin(outgroup), as.DNAbin(ponds.cons))
+
+image.DNAbin(DNAbin, show.labels = T, cex.lab = 0.05, las = 1)
+
+seq.dist.jc <- dist.dna(DNAbin, model = "JC", pairwise.deletion = FALSE)
+
+phy.all <- bionj(seq.dist.jc)
+phy <- drop.tip(phy.all, phy.all$tip.label[!phy.all$tip.label %in% c(colnames(comm), "Methanosarcina")])
+outgroup <- match("Methanosarcina", phy$tip.label)
+phy <- root(phy, outgroup, resolve.root = TRUE)
+par(mar = c(1,1,2,1) + 0.1)
+plot.phylo(phy, main = "Neighbor Joining Tree", "phylogram", show.tip.label = FALSE, use.edge.length = FALSE, direction = "right", cex = 0.6, label.offset = 1)
 ```
 
 ## 4) PHYLOGENETIC ALPHA DIVERSITY
@@ -96,6 +133,7 @@ In the R code chunk below, do the following:
 1. calculate Faith's D using the `pd()` function.
 
 ```{r}
+pd <- pd(comm, phy, include.root = FALSE)
 
 
 ```
@@ -106,7 +144,13 @@ In the R code chunk below, do the following:
 3. calculate the scaling exponent. 
 
 ```{r}
+par(mar = c(5,5,4,1) + 0.1)
+plot(log(pd$S), log(pd$PD), pch = 20, col = "red", las = 1, xlab = "ln(S)", ylab = "ln(PD)", cex.main = 1, main = "Phylodiversity (PD) vs. Taxonomic richness (S)")
 
+fit <- lm('log(pd$PD) ~ log(pd$S)')
+abline(fit, col = "red", lw = 2)
+exponent <- round(coefficients(fit)[2], 2)
+legend("topleft", legend = paste("Scaling exponent =", exponent, sep = ""), bty = "n", lw = 2, col = "red")
 
 ```
 
@@ -127,6 +171,8 @@ In the R code chunk below, do the following:
 1. estimate the standardized effect size of PD using the `richness` randomization method.  
 
 ```{r}
+ses.pd <- ses.pd(comm[1:2,], phy, null.model = "richness", runs = 25, include.root = FALSE)
+ses.pd.freq <- ses.pd(comm[1:2,], phy, null.mode = "frequency", runs = 25, include.root = FALSE)
 
 
 ```
