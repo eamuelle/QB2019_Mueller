@@ -171,7 +171,6 @@ row.names(metadata_JUL07) <- c("Crystal Bog", "Forestry Bog","Hell's Kitchen","M
 num = 1
 rows <- c(4976,4981,5024,5048,4987,4997,4970,5003)
 while(num - 1 < nrow(metadata_JUL07)){
-  print(metadata$Depth[rows[num]])
   depth_current <- metadata$Depth[rows[num]]
   metadata_JUL07$Depth[num] <- depth_current
   num <- num + 1
@@ -193,16 +192,16 @@ print(jul07.dist)
 metadata_JUL07 <- as.matrix(metadata_JUL07)
 
 #dbRDA from metadata only lats + lons
-#bog.dbrda <- dbrda(otu_JUL07~ lats + lons, as.data.frame(metadata_JUL07), dist = "bray")
+bog.dbrda <- dbrda(otu_JUL07~ lats + lons + Temperature, as.data.frame(metadata_JUL07), dist = "bray")
 
 #bog.dbrda <- dbrda(otu_JUL07~ ., as.data.frame(metadata_JUL07), dist = "bray")
 
 require("psych")
 psych::corr.test(metadata_JUL07)
 
-bog.dbrda.modO <- dbrda(jul07.dist ~ 1, as.data.frame(metadata_JUL07))
-bog.dbrda.mod1 <- dbrda(jul07.dist ~ ., as.data.frame(metadata_JUL07))
-bog.dbrda <- ordiR2step(bog.dbrda.modO, bog.dbrda.mod1, perm.max = 200)
+# bog.dbrda.modO <- dbrda(jul07.dist ~ 1, as.data.frame(metadata_JUL07))
+# bog.dbrda.mod1 <- dbrda(jul07.dist ~ ., as.data.frame(metadata_JUL07))
+# bog.dbrda <- ordiR2step(bog.dbrda.modO, bog.dbrda.mod1, perm.max = 200)
 
 bog.dbrda$call
 bog.dbrda$anova
